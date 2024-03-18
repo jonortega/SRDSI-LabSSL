@@ -220,3 +220,15 @@ SSL_CTX_free(ctx);		/* release context */
 - Carga de certificados igual que en el cliente
 - Verificar el certificado del cliente -> cargar la lista de certificados
 > **Nota:** Ahora las librerías hay que cargarlas al final, no al principio. Si no da error. (No entiendo muy bien qué librerías o qué)
+
+## ACTIVIDAD
+
+- Hay una aplicacion que nos da implementada.
+- **Tenemos que coger eso y hacer los sockets seguros (SSL) para hacerla segura.**
+- El puerto el fijo, no lo tocamos.
+1. El cliente se va a conectar a todos los servidores de la red.
+2. Va a recopilar todos los clientes conectados a ese servidor.
+3. Va a guardar esos datos en un fichero en local.
+
+> **Nota:** El cliente no debe presentar ningún certificado. Solamente el servidor.
+
