@@ -87,7 +87,7 @@ int main(int count, char *strings[]){
    sock = socket(PF_INET, SOCK_STREAM, 0);
    CHK_ERR(sock, "No crea socket");
 
-   bzero(&addr, sizeof(addr)); //! NO SE SI ESTO TIENE QUE IR AQUÍ
+   //bzero(&addr, sizeof(addr)); //! NO SE SI ESTO TIENE QUE IR AQUÍ
    serv.sin_family = AF_INET;
    serv.sin_port = htons(PUERTO);
    serv.sin_addr.s_addr = *(long *)(host->h_addr);
