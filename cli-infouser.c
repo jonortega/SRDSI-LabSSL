@@ -40,7 +40,8 @@ int main(int count, char *strings[]){
    const SSL_METHOD *method;
 	
    X509 *serv_cert;
-
+   char *line;
+   
    char *hostname;
    
    if ( count != 3 ){
@@ -109,6 +110,32 @@ int main(int count, char *strings[]){
    printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
 
 /*---- (END) Create new SSL connection ------------------------*/
+
+/*--- Print out the certificates. -------------------*/
+
+   if (SSL_get_verify_result(ssl) == X509_V_OK)
+      printf("Server verification succeeded.\n");
+
+   serv_cert = SSL_get_peer_certificate(ssl);	/* get the server's certificate */
+   if ( serv_cert == NULL )
+      printf("No certificates.\n");
+   else
+   {
+      printf("Server certificates:\n");
+	line = X509_NAME_oneline(X509_get_subject_name(serv_cert), 0, 0);
+	CHK_NULL(line);
+	printf("Subject: %s\n", line);
+	free(line);				/* free the malloc'ed string */
+		
+	line = X509_NAME_oneline(X509_get_issuer_name(serv_cert), 0, 0);
+	CHK_NULL(line);
+	printf("Issuer: %s\n", line);
+	free(line);				
+		
+	X509_free(serv_cert);			/* free the malloc'ed certificate copy */	
+   }
+
+/*--- (END) Print out the certificates. -------------------*/
 
    bzero(&buf, TAMBUF );
    bytes_rec = read(sock, buf, sizeof(tam_fich)-2);  //bytes_rec = read(sock, buf, 3+sizeof(tam_fich)-1);

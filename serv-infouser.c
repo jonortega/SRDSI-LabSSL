@@ -146,6 +146,32 @@ int main(void){
         	err = SSL_accept(ssl);
         	CHK_SSL(err);
 
+			/*--- Print out certificates.    ------------------------*/
+        	if (SSL_get_verify_result(ssl) == X509_V_OK)
+            printf("Client verification succeeded.\n");
+
+        	cli_cert = SSL_get_peer_certificate(ssl); /* Get certificates (if available) */
+
+        	if (cli_cert != NULL)
+        	{
+            	printf("Client certificates:\n");
+            	line = X509_NAME_oneline(X509_get_subject_name(cli_cert), 0, 0);
+            	CHK_NULL(line);
+            	printf("Subject: %s\n", line);
+            	free(line);
+
+            	line = X509_NAME_oneline(X509_get_issuer_name(cli_cert), 0, 0);
+            	CHK_NULL(line);
+            	printf("Issuer: %s\n", line);
+           		free(line);
+
+            	X509_free(cli_cert);
+        	}
+        	else
+            	printf("No certificates.\n");
+
+        	printf("Server: SSL connection using %s\n", SSL_get_cipher(ssl));
+			/*--- (END) Print out certificates.    ------------------------*/
 			enviar_usuarios(c); 
 			close(c);
 			SSL_free(ssl); /* release SSL state */
