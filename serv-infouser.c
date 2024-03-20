@@ -141,7 +141,7 @@ int main(void){
 			ssl = SSL_new(ctx); /* get new SSL state with context */
         	CHK_NULL(ssl);
 
-        	SSL_set_fd(ssl, client); /* set connection socket to SSL state */
+        	SSL_set_fd(ssl, c); /* set connection socket to SSL state */
 
         	err = SSL_accept(ssl);
         	CHK_SSL(err);
