@@ -143,7 +143,10 @@ int main(int count, char *strings[]){
    
    if ( strncmp(buf, "OK:", 3) ){
       printf("Encontrado error en comando %s!!!\n",buf);
-	  close(ssl);
+	   close(ssl);
+      close(sock);
+      SSL_free(ssl);
+      SSL_CTX_free(ctx);
       exit(1);
    }
    tam_fich = atol(&buf[3]);
@@ -160,14 +163,20 @@ int main(int count, char *strings[]){
 
 		if ((k <= 0)|| !strncmp(buf, "KO:" ,3)){
 			perror("Leyendo respuesta. Abandono");
-			close(sock);
+			close(ssl);
+         close(sock);
+         SSL_free(ssl);
+         SSL_CTX_free(ctx);
 			fclose(fd);
 			exit(1);
 		}
 		for (i=0; i<k; i++)
 			if (putc(buf[i],fd)<0){
 				perror("Escribiendo en el fichero local. Abandono");
-				close(sock);
+				close(ssl);
+            close(sock);
+            SSL_free(ssl);
+            SSL_CTX_free(ctx);
 				fclose(fd);
 				exit(1);
 			}
@@ -182,7 +191,6 @@ int main(int count, char *strings[]){
    SSL_free(ssl);		/* release connection state */
    SSL_CTX_free(ctx);		/* release context */
 
-   
    exit(0);
 }
 
