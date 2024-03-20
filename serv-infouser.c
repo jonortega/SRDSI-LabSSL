@@ -138,12 +138,22 @@ int main(void){
 			c = accept(s, NULL, 0);
 			CHK_ERR(c, "Accept");
 
+			ssl = SSL_new(ctx); /* get new SSL state with context */
+        	CHK_NULL(ssl);
+
+        	SSL_set_fd(ssl, client); /* set connection socket to SSL state */
+
+        	err = SSL_accept(ssl);
+        	CHK_SSL(err);
+
 			enviar_usuarios(c); 
 			close(c);
+			SSL_free(ssl); /* release SSL state */
 		
 		} while (1);
 		
 	close(s);
+	SSL_CTX_free(ctx); /* release context */
 	exit(0);
 }
 
