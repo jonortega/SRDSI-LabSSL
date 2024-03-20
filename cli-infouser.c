@@ -14,10 +14,18 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+#define CERTFILE "certificados/c_cert.pem"
+#define KEYFILE  "certificados/c_key.pem"
+#define CA_CERT  "certificados/s-ca_cert.pem"
+
+#define CHK_NULL(x) if ((x)==NULL) { ERR_print_errors_fp(stderr); exit(1); }
 #define CHK_ERR(err,s) if ((err)==-1) { perror(s); exit(1);  }
+#define CHK_SSL(err) if ((err)==-1) { ERR_print_errors_fp(stderr); exit(2); }
 
 #define PUERTO (IPPORT_RESERVED + 40)  // Puerto tomado al azar
 #define TAMBUF 1024 			// Maxima lectura/escritura
+
+/*--- main - create SSL context and connect  ---------------*/
 
 int main(int count, char *strings[]){
    int sock;
@@ -28,24 +36,82 @@ int main(int count, char *strings[]){
    struct hostent *host;
    FILE *fd;
    char buf[TAMBUF];
+
+   SSL_CTX *ctx;
+   SSL *ssl;
+   const SSL_METHOD *method;
+	
+   X509 *serv_cert;
+
+   char *hostname;
    
    if ( count != 3 ){
         printf("Uso: %s <hostip> <filename>\n", strings[0]);
         exit(1);
     	}
    
-   host = gethostbyname(strings[1]);
+   hostname = strings[1];
 
+/*--- Initialize the SSL engine (CTX)  -----------------*/
+
+   SSL_library_init();
+   SSL_load_error_strings();		/* Bring in and register error messages */
+
+   method =  TLS_client_method();	/* Create new client-method instance */
+   ctx = SSL_CTX_new(method);		/* Create new context */
+   CHK_NULL(ctx);
+	
+   err=SSL_CTX_set_cipher_list(ctx, "AES128-SHA256:AES256-CCM:AES256-GCM-SHA384");
+   CHK_SSL(err);
+
+   err=SSL_CTX_set_max_proto_version(ctx, TLS1_2_VERSION);
+   CHK_SSL(err);
+
+/*--- (END) Initialize the SSL engine (CTX)  -----------------*/
+
+/*---- Load Client Certificate ----------*/
+
+   /* Load Trusted CA certificate, to verify the server's certificate */
+   err = SSL_CTX_load_verify_locations(ctx, CA_CERT, NULL);
+   CHK_SSL(err);
+		
+   /*Set flag in context to require server certificate verification */
+   SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+   SSL_CTX_set_verify_depth(ctx, 1);   
+
+/*---- (END) Load Client Certificate ----------*/
+
+/*--- Create socket and connect to server. --------*/
+
+   host = gethostbyname(hostname);
+   CHK_ERR((long)host, hostname);
+	
    sock = socket(PF_INET, SOCK_STREAM, 0);
    CHK_ERR(sock, "No crea socket");
-   
+
+   bzero(&addr, sizeof(addr)); //! NO SE SI ESTO TIENE QUE IR AQUÍ
    serv.sin_family = AF_INET;
    serv.sin_port = htons(PUERTO);
    serv.sin_addr.s_addr = *(long *)(host->h_addr);
-   
+
    err = connect(sock, (struct sockaddr *)&serv, sizeof serv);
    CHK_ERR(err, "No acepta conexion");
-   
+
+/*--- (END) Create socket and connect to server. --------*/
+
+/*---- Create new SSL connection ------------------------*/
+
+   ssl = SSL_new(ctx);		/* create new SSL connection state */
+   CHK_NULL(ssl);    
+
+   SSL_set_fd(ssl, sock);	/* attach the socket descriptor */
+        
+   err = SSL_connect(ssl) ;	/* perform the connection */
+   CHK_SSL(err);
+   printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
+
+/*---- (END) Create new SSL connection ------------------------*/
+
    bzero(&buf, TAMBUF );
    bytes_rec = read(sock, buf, sizeof(tam_fich)-2);  //bytes_rec = read(sock, buf, 3+sizeof(tam_fich)-1);
    CHK_ERR(bytes_rec, "Error de lectura");
@@ -86,6 +152,11 @@ int main(int count, char *strings[]){
 	fclose(fd);
    
    close(sock);
+
+   SSL_free(ssl);		/* release connection state */
+   SSL_CTX_free(ctx);		/* release context */
+
+   
    exit(0);
 }
 
