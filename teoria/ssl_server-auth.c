@@ -22,21 +22,9 @@
 
 #define REPLY "Hello, welcome¡¡¡¡¡"
 
-#define CHK_NULL(x)  \
-    if ((x) == NULL) \
-    exit(-1)
-#define CHK_ERR(err, s) \
-    if ((err) == -1)    \
-    {                   \
-        perror(s);      \
-        exit(-2);       \
-    }
-#define CHK_SSL(err)                 \
-    if ((err) == -1)                 \
-    {                                \
-        ERR_print_errors_fp(stderr); \
-        exit(-3);                    \
-    }
+#define CHK_NULL(x) if ((x) == NULL) exit(-1)
+#define CHK_ERR(err, s) if ((err) == -1) { perror(s); exit(-2); }
+#define CHK_SSL(err) if ((err) == -1) { ERR_print_errors_fp(stderr); exit(-3); }
 
 /*--- main - create SSL socket server. ---------------------*/
 
