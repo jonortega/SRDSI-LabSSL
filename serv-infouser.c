@@ -24,7 +24,7 @@
 #define PUERTO (IPPORT_RESERVED + 40)  // Puerto tomado al azar
 #define TAMBUF 1460 			// Maxima lectura/escritura
 
-void enviar_usuarios(int s){
+void enviar_usuarios(SSL *s){
 	int fp;  	// Descriptor del fichero a enviar
 	struct stat f;	// Estructura de donde sacaremos el tama�o del fichero
 	int i,k, total;
@@ -35,32 +35,32 @@ void enviar_usuarios(int s){
 	
 	if ((fp = open("/tmp/file_finger", O_RDONLY)) < 0 ) {
 		sprintf(buf, "KO: Error al abrir el fichero");
-		write(s, buf, strlen(buf));
+		SSL_write(s, buf, strlen(buf));
 		return;
 	}
 	
 	i = stat("/tmp/file_finger", &f);
 	if (i != 0) {
 		sprintf(buf, "KO: Error stat");
-		write(s, buf, strlen(buf));
+		SSL_write(s, buf, strlen(buf));
 		close(fp);
 		return;
 	}
 	
 	tam = f.st_size;
 	sprintf(buf, "OK:%ld", tam);
-	write(s, buf, strlen(buf));
+	SSL_write(s, buf, strlen(buf));
 
 	total = 0;
 	while (total < tam){
 		if ((i = read(fp, buf, TAMBUF))<0) {
 			sprintf(buf, "KO: Error read file");
-			write(s, buf, strlen(buf));
+			SSL_write(s, buf, strlen(buf));
 			perror("read socket");
 			close(fp);
 			return;
 		}			
-		if ((write(s,buf,i))<i) {
+		if ((SSL_write(s,buf,i))<i) {
 			perror("write socket");
 			close(fp);
 			return;
@@ -76,6 +76,7 @@ int main(void){
 	int s, c;	// sockets de conexion y dialogo
 	int err, n;		// variable auxiliar
 	struct sockaddr_in dir;
+	socklen_t len = sizeof(dir);
 	char buf[TAMBUF];	// buffer para lectura/excritura en el socket. 
 
 	SSL_CTX *ctx;
@@ -124,59 +125,63 @@ int main(void){
 	s = socket(PF_INET, SOCK_STREAM, 0);
 	CHK_ERR(s, "Apertura de socket");
 
+	bzero(&dir, sizeof(dir));
 	dir.sin_family = AF_INET;
 	dir.sin_port = htons(PUERTO);
 	dir.sin_addr.s_addr = htonl(INADDR_ANY); 
 	
 	err = bind (s, (struct sockaddr *)&dir, sizeof(dir));
-	CHK_ERR(err, "Bind");
+	CHK_ERR(err, "Can't bind port");
 	
 	err = listen (s, 5);
-	CHK_ERR(err, "Listen");
+	CHK_ERR(err, "Can't configure listenig port");
 
-	do {
-			c = accept(s, NULL, 0);
-			CHK_ERR(c, "Accept");
+	while (1) {
+		c = accept(s, (struct sockaddr *)&dir, &len); /* accept connection as usual */
+        CHK_ERR(c, "No se acepta conexión");
+        printf("Connection: %d:%d\n", inet_ntoa(dir.sin_addr), ntohs(dir.sin_port));
 
-			ssl = SSL_new(ctx); /* get new SSL state with context */
-        	CHK_NULL(ssl);
+		ssl = SSL_new(ctx); /* get new SSL state with context */
+		CHK_NULL(ssl);
 
-        	SSL_set_fd(ssl, c); /* set connection socket to SSL state */
+		SSL_set_fd(ssl, c); /* set connection socket to SSL state */
 
-        	err = SSL_accept(ssl);
-        	CHK_SSL(err);
+		err = SSL_accept(ssl);
+		CHK_SSL(err);
 
-			/*--- Print out certificates.    ------------------------*/
-        	if (SSL_get_verify_result(ssl) == X509_V_OK)
-            printf("Client verification succeeded.\n");
+		/*--- Print out certificates.    ------------------------*/
+		if (SSL_get_verify_result(ssl) == X509_V_OK)
+			printf("Client verification succeeded.\n");
 
-        	cli_cert = SSL_get_peer_certificate(ssl); /* Get certificates (if available) */
+		cli_cert = SSL_get_peer_certificate(ssl); /* Get certificates (if available) */
 
-        	if (cli_cert != NULL)
-        	{
-            	printf("Client certificates:\n");
-            	line = X509_NAME_oneline(X509_get_subject_name(cli_cert), 0, 0);
-            	CHK_NULL(line);
-            	printf("Subject: %s\n", line);
-            	free(line);
+		if (cli_cert != NULL)
+		{
+			printf("Client certificates:\n");
+			line = X509_NAME_oneline(X509_get_subject_name(cli_cert), 0, 0);
+			CHK_NULL(line);
+			printf("Subject: %s\n", line);
+			free(line);
 
-            	line = X509_NAME_oneline(X509_get_issuer_name(cli_cert), 0, 0);
-            	CHK_NULL(line);
-            	printf("Issuer: %s\n", line);
-           		free(line);
+			line = X509_NAME_oneline(X509_get_issuer_name(cli_cert), 0, 0);
+			CHK_NULL(line);
+			printf("Issuer: %s\n", line);
+			free(line);
 
-            	X509_free(cli_cert);
-        	}
-        	else
-            	printf("No certificates.\n");
+			X509_free(cli_cert);
+		}
+		else
+			printf("No certificates.\n");
 
-        	printf("Server: SSL connection using %s\n", SSL_get_cipher(ssl));
-			/*--- (END) Print out certificates.    ------------------------*/
-			enviar_usuarios(c); 
-			close(c);
-			SSL_free(ssl); /* release SSL state */
+		printf("Server: SSL connection using %s\n", SSL_get_cipher(ssl));
+		/*--- (END) Print out certificates.    ------------------------*/
 		
-		} while (1);
+		enviar_usuarios(ssl);
+
+		close(c);
+		SSL_free(ssl); /* release SSL state */
+		
+	}
 		
 	close(s);
 	SSL_CTX_free(ctx); /* release context */

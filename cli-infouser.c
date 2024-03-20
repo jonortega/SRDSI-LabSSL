@@ -1,4 +1,4 @@
-#include <string.h>   // NEcesario para usar bcopy
+#include <string.h>   // Necesario para usar bcopy
 // Ficheros necesarios para el manejo de sockets, direcciones, etc.
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <stdlib.h>  // Para atol
 #include <stdio.h>  //  Manejo de ficheros
-#include <fcntl.h>  //  PAra poder hacer open
+#include <fcntl.h>  //  Para poder hacer open
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -68,7 +68,7 @@ int main(int count, char *strings[]){
 
 /*--- (END) Initialize the SSL engine (CTX)  -----------------*/
 
-/*---- Load Client Certificate ----------*/
+/*---- Load CA Certificate ----------*/
 
    /* Load Trusted CA certificate, to verify the server's certificate */
    err = SSL_CTX_load_verify_locations(ctx, CA_CERT, NULL);
@@ -78,22 +78,22 @@ int main(int count, char *strings[]){
    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
    SSL_CTX_set_verify_depth(ctx, 1);   
 
-/*---- (END) Load Client Certificate ----------*/
+/*---- (END) Load CA Certificate ----------*/
 
 /*--- Create socket and connect to server. --------*/
 
    host = gethostbyname(hostname);
    CHK_ERR((long)host, hostname);
 	
-   sock = socket(PF_INET, SOCK_STREAM, 0);
+   sock = socket(PF_INET, SOCK_STREAM, 0); // Crear el socket TCP
    CHK_ERR(sock, "No crea socket");
 
-   //bzero(&addr, sizeof(addr)); //! NO SE SI ESTO TIENE QUE IR AQUÍ
+   bzero(&serv, sizeof(serv));
    serv.sin_family = AF_INET;
-   serv.sin_port = htons(PUERTO);
-   serv.sin_addr.s_addr = *(long *)(host->h_addr);
+   serv.sin_port = htons(PUERTO); // Indicar puerto
+   serv.sin_addr.s_addr = *(long *)(host->h_addr); // Indicar direccion IP
 
-   err = connect(sock, (struct sockaddr *)&serv, sizeof serv);
+   err = connect(sock, (struct sockaddr *)&serv, sizeof serv); 
    CHK_ERR(err, "No acepta conexion");
 
 /*--- (END) Create socket and connect to server. --------*/
@@ -138,12 +138,12 @@ int main(int count, char *strings[]){
 /*--- (END) Print out the certificates. -------------------*/
 
    bzero(&buf, TAMBUF );
-   bytes_rec = read(sock, buf, sizeof(tam_fich)-2);  //bytes_rec = read(sock, buf, 3+sizeof(tam_fich)-1);
+   bytes_rec = SSL_read(ssl, buf, sizeof(tam_fich)-2);  //bytes_rec = read(sock, buf, sizeof(tam_fich)-2);
    CHK_ERR(bytes_rec, "Error de lectura");
    
    if ( strncmp(buf, "OK:", 3) ){
       printf("Encontrado error en comando %s!!!\n",buf);
-	  close(sock);
+	  close(ssl);
       exit(1);
    }
    tam_fich = atol(&buf[3]);
@@ -156,7 +156,7 @@ int main(int count, char *strings[]){
 
 	bytes_rec = 0;
 	while(bytes_rec < tam_fich){ 
-		k = read (sock, buf, TAMBUF);
+		k = SSL_read(ssl, buf, TAMBUF);
 
 		if ((k <= 0)|| !strncmp(buf, "KO:" ,3)){
 			perror("Leyendo respuesta. Abandono");
@@ -176,6 +176,7 @@ int main(int count, char *strings[]){
 
 	fclose(fd);
    
+   close(ssl);
    close(sock);
 
    SSL_free(ssl);		/* release connection state */
