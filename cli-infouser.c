@@ -11,6 +11,8 @@
 #include <stdlib.h>  // Para atol
 #include <stdio.h>  //  Manejo de ficheros
 #include <fcntl.h>  //  PAra poder hacer open
+#include <openssl/ssl.h>
+#include <openssl/err.h>
 
 #define CHK_ERR(err,s) if ((err)==-1) { perror(s); exit(1);  }
 
