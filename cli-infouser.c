@@ -14,8 +14,6 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#define CERTFILE "certificados/c_cert.pem"
-#define KEYFILE  "certificados/c_key.pem"
 #define CA_CERT  "certificados/s-ca_cert.pem"
 
 #define CHK_NULL(x) if ((x)==NULL) { ERR_print_errors_fp(stderr); exit(1); }
