@@ -54,10 +54,10 @@ int main(int count, char *strings[]){
 /*--- Initialize the SSL engine (CTX)  -----------------*/
 
    SSL_library_init();
-   SSL_load_error_strings();		/* Bring in and register error messages */
+   SSL_load_error_strings();
 
-   method =  TLS_client_method();	/* Create new client-method instance */
-   ctx = SSL_CTX_new(method);		/* Create new context */
+   method =  TLS_client_method();
+   ctx = SSL_CTX_new(method);		// Crear un nuevo contexto
    CHK_NULL(ctx);
 	
    err=SSL_CTX_set_cipher_list(ctx, "AES128-SHA256:AES256-CCM:AES256-GCM-SHA384");
@@ -70,11 +70,11 @@ int main(int count, char *strings[]){
 
 /*---- Load CA Certificate ----------*/
 
-   /* Load Trusted CA certificate, to verify the server's certificate */
+   // Cargar el certificado de la CA del cliente, para verificar el cert. del servidor
    err = SSL_CTX_load_verify_locations(ctx, CA_CERT, NULL);
    CHK_SSL(err);
 		
-   /*Set flag in context to require server certificate verification */
+   // Flag para requerir la verificación del cert. del servidor
    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
    SSL_CTX_set_verify_depth(ctx, 1);   
 
@@ -100,12 +100,12 @@ int main(int count, char *strings[]){
 
 /*---- Create new SSL connection ------------------------*/
 
-   ssl = SSL_new(ctx);		/* create new SSL connection state */
+   ssl = SSL_new(ctx);		// Crear nuevo ESTADO de conexion
    CHK_NULL(ssl);    
 
-   SSL_set_fd(ssl, sock);	/* attach the socket descriptor */
+   SSL_set_fd(ssl, sock);	// Adjuntar el descriptor de socket TCP al estado
         
-   err = SSL_connect(ssl) ;	/* perform the connection */
+   err = SSL_connect(ssl) ;	// Realizar la conexion con el socket SSL/TLS
    CHK_SSL(err);
    printf("Connected with %s encryption\n", SSL_get_cipher(ssl));
 
@@ -116,29 +116,23 @@ int main(int count, char *strings[]){
    if (SSL_get_verify_result(ssl) == X509_V_OK)
       printf("Server verification succeeded.\n");
 
-   serv_cert = SSL_get_peer_certificate(ssl);	/* get the server's certificate */
+   serv_cert = SSL_get_peer_certificate(ssl);	// Obtener el certificado del servidor
    if ( serv_cert == NULL )
       printf("No certificates.\n");
    else
    {
       printf("Server certificates:\n");
-	line = X509_NAME_oneline(X509_get_subject_name(serv_cert), 0, 0);
-	CHK_NULL(line);
-	printf("Subject: %s\n", line);
-	free(line);				/* free the malloc'ed string */
-		
-	line = X509_NAME_oneline(X509_get_issuer_name(serv_cert), 0, 0);
-	CHK_NULL(line);
-	printf("Issuer: %s\n", line);
-	free(line);				
-		
-	X509_free(serv_cert);			/* free the malloc'ed certificate copy */	
+      line = X509_NAME_oneline(X509_get_subject_name(serv_cert), 0, 0);
+      CHK_NULL(line);
+      printf("Subject: %s\n", line); // Mostrar el cert. del servidor por consola
+      free(line);			
+      X509_free(serv_cert);
    }
 
 /*--- (END) Print out the certificates. -------------------*/
 
    bzero(&buf, TAMBUF );
-   bytes_rec = SSL_read(ssl, buf, sizeof(tam_fich)-2);  //bytes_rec = read(sock, buf, sizeof(tam_fich)-2);
+   bytes_rec = SSL_read(ssl, buf, sizeof(tam_fich)-2);
    CHK_ERR(bytes_rec, "Error de lectura");
    
    if ( strncmp(buf, "OK:", 3) ){
@@ -149,20 +143,21 @@ int main(int count, char *strings[]){
       SSL_CTX_free(ctx);
       exit(1);
    }
-   tam_fich = atol(&buf[3]);
 
-   // Recibir fichero del servidor
+   tam_fich = atol(&buf[3]); // Obtener el tamaño del fichero
+
+   // Obtener nombre del fichero y crearlo localmente
    if ((fd = fopen(strings[2], "w")) == NULL){
-		perror("Abriendo fichero local");
+		perror("Error abriendo fichero local");
 		exit(1);
    }
 
 	bytes_rec = 0;
 	while(bytes_rec < tam_fich){ 
-		k = SSL_read(ssl, buf, TAMBUF);
+		k = SSL_read(ssl, buf, TAMBUF); // Lectura de datos desde el socket SSL/TLS
 
 		if ((k <= 0)|| !strncmp(buf, "KO:" ,3)){
-			perror("Leyendo respuesta. Abandono");
+			perror("Error leyendo respuesta. Abandono");
 			close(ssl);
          close(sock);
          SSL_free(ssl);
@@ -171,8 +166,8 @@ int main(int count, char *strings[]){
 			exit(1);
 		}
 		for (i=0; i<k; i++)
-			if (putc(buf[i],fd)<0){
-				perror("Escribiendo en el fichero local. Abandono");
+			if (putc(buf[i],fd)<0){ // Escritura de los datos en el fichero local
+				perror("Error escribiendo en el fichero local. Abandono");
 				close(ssl);
             close(sock);
             SSL_free(ssl);
@@ -185,11 +180,11 @@ int main(int count, char *strings[]){
 
 	fclose(fd);
    
-   close(ssl);
-   close(sock);
+   close(ssl); // Cerrar el socket SSL/TLS
+   close(sock); // Cerrar el socket TCP
 
-   SSL_free(ssl);		/* release connection state */
-   SSL_CTX_free(ctx);		/* release context */
+   SSL_free(ssl);	 // Liberar el estado de la conexion
+   SSL_CTX_free(ctx); // Liberar el contexto
 
    exit(0);
 }
