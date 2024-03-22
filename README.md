@@ -106,7 +106,7 @@ close(sd);						        /* Close socket */
 SSL_library_init();
 SSL_load_error_strings();		/* Bring in and register error messages */
 ```
-- El servidor elije los alg cript que quiera (el primero suele ser):
+- El cliente propone para que servidor elija los alg cript que quiera (el primero suele ser):
 ```c
 method =  TLS_client_method();	/* Create new client-method instance */
 ctx = SSL_CTX_new(method);		/* Create new context */
